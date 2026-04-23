@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MillionPixels — 1px = 1$ = ½ Beneficenza</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --accent: #00ff88;
+    --accent2: #ff4d6d;
+    --gold: #ffd166;
+    --text: #e8e8f0;
+    --muted: #5a5a7a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+  header {
+    padding: 1.2rem 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(10,10,15,0.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,255,136,0.4);
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+  .logo span { color: var(--gold); }
+  @keyframes pulse-glow {
+    0%, 100% { text-shadow: 0 0 30px rgba(0,255,136,0.3); }
+    50% { text-shadow: 0 0 60px rgba(0,255,136,0.6); }
+  }
+  .stats-bar { display: flex; gap: 2rem; font-family: 'DM Mono', monospace; font-size: 0.75rem; }
+  .stat { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .stat-label { color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .stat-value { color: var(--accent); font-weight: 500; font-size: 1rem; }
+  .stat-value.red { color: var(--accent2); }
+
+  .hero {
+    padding: 4rem 3rem 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3rem, 6vw, 6rem);
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+    animation: fadeInUp 0.6s ease both;
+  }
+  .hero-title .big {
+    display: block;
+    font-size: clamp(5rem, 10vw, 10rem);
+    color: var(--accent);
+    text-shadow: 0 0 60px rgba(0,255,136,0.3);
+  }
+  .hero-sub {
+    margin-top: 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 420px;
+    animation: fadeInUp 0.6s 0.1s ease both;
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .split-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    animation: fadeInUp 0.6s 0.2s ease both;
+  }
+  .split-title { font-family: 'DM Mono', monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 0.5rem; }
+  .split-row { display: flex; align-items: center; gap: 1rem; }
+  .split-bar-wrap { flex: 1; height: 12px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .split-bar { height: 100%; border-radius: 99px; }
+  .split-bar.charity { background: var(--accent); width: 50%; }
+  .split-bar.mine { background: var(--accent2); width: 50%; }
+  .split-label { font-size: 0.85rem; width: 120px; font-weight: 600; }
+  .split-pct { font-family: 'DM Mono', monospace; font-size: 1.2rem; font-weight: 500; width: 50px; text-align: right; }
+  .split-pct.c { color: var(--accent); }
+  .split-pct.m { color: var(--accent2); }
+  .cta-row { display: flex; gap: 1rem; margin-top: 1rem; }
+  .btn {
+    padding: 0.8rem 1.8rem;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary { background: var(--accent); color: #0a0a0f; }
+  .btn-primary:hover { background: #00ffaa; transform: translateY(-1px); box-shadow: 0 8px 30px rgba(0,255,136,0.3); }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: var(--muted); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+  .progress-section {
+    padding: 2rem 3rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    border-top: 1px solid var(--border);
+  }
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .progress-track { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 1rem 0; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold)); border-radius: 99px; transition: width 1s ease; }
+  .progress-meta { display: flex; justify-content: space-between; font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--muted); }
+
+  .canvas-section { padding: 2rem 3rem 4rem; max-width: 1400px; margin: 0 auto; }
+  .canvas-wrapper {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: crosshair;
+    background: var(--surface);
+  }
+  .canvas-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--muted);
+    z-index: 10;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  canvas { display: block; width: 100%; image-rendering: pixelated; }
+
+  .tooltip {
+    position: fixed;
+    background: rgba(10,10,15,0.95);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    pointer-events: none;
+    z-index: 1000;
+    display: none;
+    backdrop-filter: blur(8px);
+    line-height: 1.6;
+  }
+  .tooltip.visible { display: block; }
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 200;
+    display: none;
+    place-items: center;
+  }
+  .modal-backdrop.open { display: grid; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2.5rem;
+    width: 480px;
+    max-width: 90vw;
+    position: relative;
+  }
+  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; color: var(--accent); margin-bottom: 0.3rem; }
+  .modal-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+  .form-group { margin-bottom: 1.2rem; }
+  label { display: block; font-size: 0.75rem; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.4rem; }
+  input, textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 1rem; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+  input:focus { border-color: var(--accent); }
+  .pixel-info { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; font-family: 'DM Mono', monospace; font-size: 0.8rem; margin-bottom: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .pi-label { color: var(--muted); }
+  .pi-value { color: var(--accent); text-align: right; }
+  .close-btn { position: absolute; top: 1.5rem; right: 1.5rem; background: none; border: 1px solid var(--border); color: var(--muted); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: grid; place-items: center; transition: all 0.2s; }
+  .close-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    z-index: 9000;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    max-width: 320px;
+    line-height: 1.6;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-color: var(--accent2); }
+
+  footer { padding: 2rem 3rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .charity-tag { background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); color: var(--accent); padding: 0.3rem 0.8rem; border-radius: 99px; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  @media (max-width: 768px) {
+    .hero { grid-template-columns: 1fr; gap: 2rem; }
+    header { padding: 1rem; }
+    .stats-bar { gap: 1rem; }
+    .hero, .canvas-section, .progress-section { padding-left: 1rem; padding-right: 1rem; }
+    footer { flex-direction: column; gap: 1rem; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Million<span>Pixels</span></div>
+  <div class="stats-bar">
+    <div class="stat">
+      <span class="stat-label">Venduti</span>
+      <span class="stat-value" id="sold-count">—</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Beneficenza</span>
+      <span class="stat-value" id="charity-total">—</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Disponibili</span>
+      <span class="stat-value red" id="avail-count">—</span>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div>
+    <h1 class="hero-title">
+      <span class="big">1px</span>
+      = 1 DOLLARO<br>= MEZZO BENE
+    </h1>
+    <p class="hero-sub">
+      Un milione di pixel. Compra il tuo spazio sulla tela più grande del web.
+      Il 50% va in beneficenza, il 50% finanzia questo progetto.
+      Lascia il tuo segno — letteralmente.
+    </p>
+  </div>
+  <div class="split-box">
+    <p class="split-title">Come viene diviso ogni $1</p>
+    <div class="split-row">
+      <span class="split-label">❤️ Beneficenza</span>
+      <div class="split-bar-wrap"><div class="split-bar charity"></div></div>
+      <span class="split-pct c">50¢</span>
+    </div>
+    <div class="split-row">
+      <span class="split-label">⚡ Progetto</span>
+      <div class="split-bar-wrap"><div class="split-bar mine"></div></div>
+      <span class="split-pct m">50¢</span>
+    </div>
+    <div style="height:1px;background:var(--border);margin:0.5rem 0;"></div>
+    <div style="font-size:0.8rem;color:var(--muted);line-height:1.6;">
+      🏥 Charity supportata: <strong style="color:var(--text)">Save the Children Italia</strong><br>
+      💳 Pagamento: Stripe / PayPal<br>
+      📐 Min acquisto: 1 pixel — Max: blocchi 10×10
+    </div>
+    <div class="cta-row">
+      <button class="btn btn-primary" onclick="openModalRandom()">🎯 Acquista Pixel</button>
+      <button class="btn btn-outline" onclick="scrollToCanvas()">👁 Esplora Mappa</button>
+    </div>
+  </div>
+</section>
+
+<div class="progress-section">
+  <div class="section-label">Avanzamento — 1.000.000 pixel totali</div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progress-bar" style="width:0%"></div>
+  </div>
+  <div class="progress-meta">
+    <span id="prog-left">Caricamento...</span>
+    <span id="prog-pct">0%</span>
+  </div>
+</div>
+
+<div class="canvas-section" id="canvas-section">
+  <div class="section-label">La Tela — clicca per comprare un pixel</div>
+  <div class="canvas-wrapper" id="canvas-wrapper">
+    <div class="canvas-loading" id="canvas-loading">
+      <div class="spinner"></div>
+      <span>Caricamento pixel dal database...</span>
+    </div>
+    <canvas id="pixelCanvas" width="1000" height="1000"></canvas>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<div class="modal-backdrop" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal()">✕</button>
+    <div class="modal-title">Acquista Pixel</div>
+    <div class="modal-sub">Compra il tuo spazio sulla tela permanente</div>
+    <div class="pixel-info">
+      <span class="pi-label">Posizione X</span><span class="pi-value" id="px-x">—</span>
+      <span class="pi-label">Posizione Y</span><span class="pi-value" id="px-y">—</span>
+      <span class="pi-label">Prezzo</span><span class="pi-value">$1.00</span>
+      <span class="pi-label">A beneficenza</span><span class="pi-value" style="color:var(--accent)">$0.50</span>
+    </div>
+    <div class="form-group">
+      <label>Il tuo nome / brand *</label>
+      <input type="text" id="buyer-name" placeholder="Es: Mario Rossi o Acme Corp" maxlength="60">
+    </div>
+    <div class="form-group">
+      <label>URL del tuo sito (opzionale)</label>
+      <input type="url" id="buyer-url" placeholder="https://tuosito.com">
+    </div>
+    <div class="form-group">
+      <label>Colore pixel</label>
+      <input type="color" id="buyer-color" value="#00ff88" style="height:44px;padding:4px 8px;cursor:pointer;">
+    </div>
+    <button class="btn btn-primary" id="pay-btn" style="width:100%;margin-top:0.5rem;" onclick="handlePurchase()">
+      💳 Procedi al Pagamento — $1.00
+    </button>
+    <p style="text-align:center;font-size:0.75rem;color:var(--muted);margin-top:0.8rem;font-family:'DM Mono',monospace;">
+      Stripe · Sicuro · Ricevuta via email
+    </p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer>
+  <span>© 2025 MillionPixels</span>
+  <span class="charity-tag">50% Beneficenza Certificata</span>
+  <span>Built with ❤️ e $1 alla volta</span>
+</footer>
+
+<script>
+  // =============================================
+  // ⚙️  CONFIGURAZIONE — INCOLLA QUI LE TUE CHIAVI
+  // =============================================
+  const SUPABASE_URL = 'https://qgvrildsspxewwhemhaq.supabase.co/rest/v1/';
+  const SUPABASE_KEY = 'sb_publishable_r8jNrbZaZEKWpuvF6wJ38A_wmtgq2PF';
+  // =============================================
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const canvas = document.getElementById('pixelCanvas');
+  const ctx = canvas.getContext('2d');
+  const COLS = 1000, ROWS = 1000;
+  const pixelMap = new Map(); // key: "x,y" → {color, owner_name, owner_url}
+
+  let selectedX = null, selectedY = null;
+
+  // ── INIT ──────────────────────────────────────
+  async function init() {
+    ctx.fillStyle = '#111118';
+    ctx.fillRect(0, 0, COLS, ROWS);
+
+    // Carica tutti i pixel dal DB
+    const { data, error } = await db.from('pixels').select('x,y,color,owner_name,owner_url');
+    if (error) { console.error(error); return; }
+
+    data.forEach(p => {
+      pixelMap.set(`${p.x},${p.y}`, { color: p.color, name: p.owner_name, url: p.owner_url });
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, 1, 1);
+    });
+
+    document.getElementById('canvas-loading').style.display = 'none';
+    updateStats(data.length);
+
+    // Realtime: nuovi pixel aggiunti da altri utenti
+    db.channel('pixels').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pixels' }, payload => {
+      const p = payload.new;
+      pixelMap.set(`${p.x},${p.y}`, { color: p.color, name: p.owner_name, url: p.owner_url });
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, 1, 1);
+      updateStats(pixelMap.size);
+    }).subscribe();
+  }
+
+  function updateStats(sold) {
+    document.getElementById('sold-count').textContent = sold.toLocaleString('it-IT');
+    document.getElementById('charity-total').textContent = '$' + Math.floor(sold * 0.5).toLocaleString('it-IT');
+    document.getElementById('avail-count').textContent = (1000000 - sold).toLocaleString('it-IT');
+    const pct = (sold / 10000).toFixed(2);
+    document.getElementById('progress-bar').style.width = pct + '%';
+    document.getElementById('prog-left').textContent = `${sold.toLocaleString('it-IT')} / 1.000.000 pixel venduti`;
+    document.getElementById('prog-pct').textContent = pct + '%';
+  }
+
+  // ── CANVAS INTERACTION ────────────────────────
+  const tooltip = document.getElementById('tooltip');
+
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const px = Math.floor((e.clientX - rect.left) * COLS / rect.width);
+    const py = Math.floor((e.clientY - rect.top) * ROWS / rect.height);
+    const data = pixelMap.get(`${px},${py}`);
+    tooltip.style.left = (e.clientX + 16) + 'px';
+    tooltip.style.top = (e.clientY - 8) + 'px';
+    if (data) {
+      tooltip.innerHTML = `<span style="color:var(--muted)">x:${px} y:${py}</span><br><span style="color:var(--accent)">${data.name}</span>${data.url ? `<br><span style="color:#4cc9f0">${data.url}</span>` : ''}`;
+    } else {
+      tooltip.innerHTML = `<span style="color:var(--muted)">x:${px} y:${py}</span><br><span style="color:var(--text)">Disponibile — $1</span>`;
+    }
+    tooltip.className = 'tooltip visible';
+  });
+
+  canvas.addEventListener('mouseleave', () => { tooltip.className = 'tooltip'; });
+
+  canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const px = Math.floor((e.clientX - rect.left) * COLS / rect.width);
+    const py = Math.floor((e.clientY - rect.top) * ROWS / rect.height);
+    if (pixelMap.has(`${px},${py}`)) {
+      const d = pixelMap.get(`${px},${py}`);
+      showToast(`❌ Pixel già acquistato da: ${d.name}`, true);
+      return;
+    }
+    openModal(px, py);
+  });
+
+  // ── MODAL ─────────────────────────────────────
+  function openModal(x, y) {
+    selectedX = x; selectedY = y;
+    document.getElementById('px-x').textContent = x;
+    document.getElementById('px-y').textContent = y;
+    document.getElementById('buyer-name').value = '';
+    document.getElementById('buyer-url').value = '';
+    document.getElementById('buyer-color').value = '#00ff88';
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function openModalRandom() {
+    let x, y;
+    do { x = Math.floor(Math.random() * COLS); y = Math.floor(Math.random() * ROWS); }
+    while (pixelMap.has(`${x},${y}`));
+    openModal(x, y);
+  }
+
+  function closeModal() { document.getElementById('modal').classList.remove('open'); }
+  function closeModalOutside(e) { if (e.target === document.getElementById('modal')) closeModal(); }
+  function scrollToCanvas() { document.getElementById('canvas-section').scrollIntoView({ behavior: 'smooth' }); }
+
+  // ── ACQUISTO ──────────────────────────────────
+  async function handlePurchase() {
+    const name = document.getElementById('buyer-name').value.trim();
+    if (!name) { showToast('⚠️ Inserisci il tuo nome!', true); return; }
+    if (selectedX === null) return;
+
+    const btn = document.getElementById('pay-btn');
+    btn.disabled = true;
+    btn.textContent = 'Salvataggio...';
+
+    const color = document.getElementById('buyer-color').value;
+    const url = document.getElementById('buyer-url').value.trim();
+
+    // ⚠️ NOTA: in produzione qui va il redirect a Stripe.
+    // Per ora inseriamo direttamente nel DB (versione demo senza pagamento).
+    const { error } = await db.from('pixels').insert({
+      x: selectedX,
+      y: selectedY,
+      color: color,
+      owner_name: name,
+      owner_url: url
+    });
+
+    btn.disabled = false;
+    btn.textContent = '💳 Procedi al Pagamento — $1.00';
+
+    if (error) {
+      if (error.code === '23505') {
+        showToast('❌ Pixel già acquistato da qualcun altro!', true);
+      } else {
+        showToast('❌ Errore: ' + error.message, true);
+      }
+      return;
+    }
+
+    closeModal();
+    showToast(`✅ Pixel (${selectedX}, ${selectedY}) di ${name} salvato!\n❤️ $0.50 andranno in beneficenza.`);
+  }
+
+  // ── TOAST ─────────────────────────────────────
+  function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(() => { t.className = 'toast'; }, 4000);
+  }
+
+  // ── START ─────────────────────────────────────
+  init();
+</script>
+</body>
+</html>
